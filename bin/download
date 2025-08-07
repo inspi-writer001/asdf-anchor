@@ -16,7 +16,7 @@ if [ -z "$version" ]; then
   echo "No version specified; falling back to latest stable: $version"
 fi
 
-# where to download and where to install
+# required ASDF paths
 download_path="${ASDF_DOWNLOAD_PATH:?Must be set by ASDF}"
 install_path="${ASDF_INSTALL_PATH:?Must be set by ASDF}"
 
@@ -42,16 +42,13 @@ filename="${TOOL_NAME}-${version}-${arch}-${os}"
 url="${GH_REPO}/releases/download/v${version}/${filename}"
 dest="${download_path}/${filename}"
 
-echo "Downloading Anchor v${version} from:"
-echo "  $url"
+echo "Downloading Anchor v${version} from: $url"
 curl -sSL -o "$dest" "$url" || fail "Download failed"
 
 # make executable if not Windows
-if [[ "$os" != *.exe ]]; then
-  chmod +x "$dest"
-fi
+[[ "$os" != *.exe ]] && chmod +x "$dest"
 
 # move into final install location
-mv "$dest" "$install_path/$TOOL_NAME"
+mv "$dest" "$install_path/bin/$TOOL_NAME"
 
-echo "Installed Anchor v${version} to: $install_path/$TOOL_NAME"
+echo "Installed Anchor v${version} to: $install_path/bin/$TOOL_NAME"
