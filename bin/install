@@ -1,10 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# resolve paths
 current_script_path=${BASH_SOURCE[0]}
 plugin_dir=$(dirname "$(dirname "$current_script_path")")
-
 source "${plugin_dir}/lib/utils.bash"
 
-# Download and install
-"${plugin_dir}/bin/download"
+# accept version and install path as args, or fall back to ASDF vars
+version="${1:-${ASDF_INSTALL_VERSION:-}}"
+install_path="${2:-${ASDF_INSTALL_PATH:-}}"
+
+if [ -z "$version" ] || [ -z "$install_path" ]; then
+  echo "Usage: $0 <version> <install-path>"
+  echo "  e.g. $0 0.31.1 /home/user/.asdf/installs/anchor/0.31.1"
+  exit 1
+fi
+
+# export for download script
+export ASDF_INSTALL_VERSION="$version"
+export ASDF_INSTALL_PATH="$install_path"
+export ASDF_INSTALL_TYPE="download"
+
+# ensure directories
+mkdir -p "$ASDF_INSTALL_PATH"
+
+# delegate to your download logic
+bash "${plugin_dir}/bin/download"
+
+# (optional) if you need any post-install steps, add here

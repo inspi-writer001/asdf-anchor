@@ -1,25 +1,35 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GH_REPO="https://github.com/solana-foundation/anchor"
-TOOL_NAME="anchor"
-
+# resolve script and plugin paths
 current_script_path=${BASH_SOURCE[0]}
 plugin_dir=$(dirname "$(dirname "$current_script_path")")
 source "${plugin_dir}/lib/utils.bash"
 
-mkdir -p "$ASDF_DOWNLOAD_PATH"
+GH_REPO="https://github.com/solana-foundation/anchor"
+TOOL_NAME="anchor"
 
-# Detect system arch
+# determine version: arg → env → latest-stable
+version="${1:-${ASDF_INSTALL_VERSION:-}}"
+if [ -z "$version" ]; then
+  version="$(bash "${plugin_dir}/bin/latest-stable")"
+  echo "No version specified; falling back to latest stable: $version"
+fi
+
+# where to download and where to install
+download_path="${ASDF_DOWNLOAD_PATH:-/tmp}/${TOOL_NAME}-download"
+install_path="${ASDF_INSTALL_PATH:-/tmp}/${TOOL_NAME}-install/$version"
+
+mkdir -p "$download_path" "$install_path"
+
+# detect platform
 arch="$(uname -m)"
 os="$(uname -s)"
-
 case "$arch" in
   x86_64) arch="x86_64" ;;
-  aarch64 | arm64) arch="aarch64" ;;
-  *) fail "Unsupported architecture: $arch" ;;
+  aarch64|arm64) arch="aarch64" ;;
+  *) fail "Unsupported arch: $arch" ;;
 esac
-
 case "$os" in
   Linux) os="unknown-linux-gnu" ;;
   Darwin) os="apple-darwin" ;;
@@ -27,17 +37,21 @@ case "$os" in
   *) fail "Unsupported OS: $os" ;;
 esac
 
-filename="${TOOL_NAME}-${ASDF_INSTALL_VERSION}-${arch}-${os}"
-download_url="${GH_REPO}/releases/download/v${ASDF_INSTALL_VERSION}/${filename}"
-dest_file="$ASDF_DOWNLOAD_PATH/${filename}"
+# build URLs and paths
+filename="${TOOL_NAME}-${version}-${arch}-${os}"
+url="${GH_REPO}/releases/download/v${version}/${filename}"
+dest="${download_path}/${filename}"
 
-echo "Downloading $download_url → $dest_file"
-curl -sSL -o "$dest_file" "$download_url"
+echo "Downloading Anchor v${version} from:"
+echo "  $url"
+curl -sSL -o "$dest" "$url" || fail "Download failed"
 
-# Make executable (skip for Windows)
-if [[ "$os" != *".exe" ]]; then
-  chmod +x "$dest_file"
+# make executable if not Windows
+if [[ "$os" != *.exe ]]; then
+  chmod +x "$dest"
 fi
 
-# Move to install path
-mv "$dest_file" "$ASDF_INSTALL_PATH/$TOOL_NAME"
+# move into final install location
+mv "$dest" "$install_path/$TOOL_NAME"
+
+echo "Installed Anchor v${version} to: $install_path/$TOOL_NAME"

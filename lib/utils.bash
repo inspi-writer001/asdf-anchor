@@ -1,74 +1,107 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-# TODO: Ensure this is the correct GitHub homepage where releases can be downloaded for anchor-lang.
-GH_REPO="https://github.com/inspi-writer001/anchor-lang"
-TOOL_NAME="anchor-lang"
-TOOL_TEST="anchor-lang --help"
+# ────────────────────────────────────────────────────────────────────────────────
+# Plugin configuration
+# ────────────────────────────────────────────────────────────────────────────────
+GH_REPO="https://github.com/solana-foundation/anchor"
+TOOL_NAME="anchor"
+TOOL_TEST="anchor --version"
 
+# ────────────────────────────────────────────────────────────────────────────────
+# Helpers
+# ────────────────────────────────────────────────────────────────────────────────
 fail() {
-	echo -e "asdf-$TOOL_NAME: $*"
-	exit 1
+  echo "asdf-${TOOL_NAME}: $*" >&2
+  exit 1
 }
 
 curl_opts=(-fsSL)
-
-# NOTE: You might want to remove this if anchor-lang is not hosted on GitHub releases.
 if [ -n "${GITHUB_API_TOKEN:-}" ]; then
-	curl_opts=("${curl_opts[@]}" -H "Authorization: token $GITHUB_API_TOKEN")
+  curl_opts+=(-H "Authorization: token $GITHUB_API_TOKEN")
 fi
 
 sort_versions() {
-	sed 'h; s/[+-]/./g; s/.p\([[:digit:]]\)/.z\1/; s/$/.z/; G; s/\n/ /' |
-		LC_ALL=C sort -t. -k 1,1 -k 2,2n -k 3,3n -k 4,4n -k 5,5n | awk '{print $2}'
+  # Convert semver into sortable form and back
+  sed 'h; s/[+-]/./g; s/.p\([[:digit:]]\)/.z\1/; s/$/.z/; G; s/\n/ /' |
+    LC_ALL=C sort -t. -k1,1 -k2,2n -k3,3n -k4,4n |
+    awk '{print $2}'
 }
 
-list_github_tags() {
-	git ls-remote --tags --refs "$GH_REPO" |
-		grep -o 'refs/tags/.*' | cut -d/ -f3- |
-		sed 's/^v//' # NOTE: You might want to adapt this sed to remove non-version strings from tags
-}
-
+# ────────────────────────────────────────────────────────────────────────────────
+# 1) List all installable versions
+# ────────────────────────────────────────────────────────────────────────────────
 list_all_versions() {
-	# TODO: Adapt this. By default we simply list the tag names from GitHub releases.
-	# Change this function if anchor-lang has other means of determining installable versions.
-	list_github_tags
+  # Use GitHub API for consistency
+  curl "${curl_opts[@]}" "https://api.github.com/repos/solana-foundation/anchor/releases" |
+    grep -E '"tag_name":' |
+    sed -E 's/.*"v?([^"]+)".*/\1/' |
+    sort_versions
 }
 
+# ────────────────────────────────────────────────────────────────────────────────
+# 2) Download a release asset
+#    $1 = version (e.g. 0.31.1)
+#    $2 = destination file path
+# ────────────────────────────────────────────────────────────────────────────────
 download_release() {
-	local version filename url
-	version="$1"
-	filename="$2"
+  local version="$1" dest="$2" filename url
 
-	# TODO: Adapt the release URL convention for anchor-lang
-	url="$GH_REPO/archive/v${version}.tar.gz"
+  # Detect platform
+  local arch os
+  arch="$(uname -m)"
+  os="$(uname -s)"
+  case "$arch" in
+    x86_64) arch="x86_64" ;;
+    aarch64|arm64) arch="aarch64" ;;
+    *) fail "Unsupported architecture: $arch" ;;
+  esac
+  case "$os" in
+    Linux) os="unknown-linux-gnu" ;;
+    Darwin) os="apple-darwin" ;;
+    MINGW*|MSYS*|CYGWIN*|Windows_NT) os="pc-windows-msvc.exe" ;;
+    *) fail "Unsupported OS: $os" ;;
+  esac
 
-	echo "* Downloading $TOOL_NAME release $version..."
-	curl "${curl_opts[@]}" -o "$filename" -C - "$url" || fail "Could not download $url"
+  filename="${TOOL_NAME}-${version}-${arch}-${os}"
+  url="${GH_REPO}/releases/download/v${version}/${filename}"
+
+  echo "* Downloading ${TOOL_NAME} v${version} → ${dest}"
+  curl "${curl_opts[@]}" -o "$dest" "$url" || fail "Could not download $url"
 }
 
+# ────────────────────────────────────────────────────────────────────────────────
+# 3) Install a version that’s already been downloaded
+#    Called by bin/install (via install_version)
+#    $1 = install_type (should be “version”)
+#    $2 = version
+#    $3 = full install path
+# ────────────────────────────────────────────────────────────────────────────────
 install_version() {
-	local install_type="$1"
-	local version="$2"
-	local install_path="${3%/bin}/bin"
+  local install_type="$1" version="$2" install_prefix="$3"
 
-	if [ "$install_type" != "version" ]; then
-		fail "asdf-$TOOL_NAME supports release installs only"
-	fi
+  if [ "$install_type" != "version" ]; then
+    fail "Only version-based installs are supported"
+  fi
 
-	(
-		mkdir -p "$install_path"
-		cp -r "$ASDF_DOWNLOAD_PATH"/* "$install_path"
+  # Download into a temp dir
+  local tmpdir
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' EXIT
 
-		# TODO: Assert anchor-lang executable exists.
-		local tool_cmd
-		tool_cmd="$(echo "$TOOL_TEST" | cut -d' ' -f1)"
-		test -x "$install_path/$tool_cmd" || fail "Expected $install_path/$tool_cmd to be executable."
+  local archive="$tmpdir/${TOOL_NAME}.bin"
+  download_release "$version" "$archive"
 
-		echo "$TOOL_NAME $version installation was successful!"
-	) || (
-		rm -rf "$install_path"
-		fail "An error occurred while installing $TOOL_NAME $version."
-	)
+  # Create final bin dir
+  mkdir -p "$install_prefix/bin"
+  mv "$archive" "$install_prefix/bin/$TOOL_NAME"
+  chmod +x "$install_prefix/bin/$TOOL_NAME"
+
+  # Verify it runs
+  if ! "$install_prefix/bin/$TOOL_NAME" --version &>/dev/null; then
+    rm -rf "$install_prefix"
+    fail "Installed binary did not run correctly"
+  fi
+
+  echo "✅ ${TOOL_NAME} v${version} installed to ${install_prefix}/bin/$TOOL_NAME"
 }

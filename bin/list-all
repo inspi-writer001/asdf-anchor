@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GH_REPO="https://github.com/solana-foundation/anchor"
-TOOL_NAME="anchor"
-
-# Get list of releases from GitHub
-curl -s "${GH_REPO}/releases" |
-  grep -Eo '/coral-xyz/anchor/releases/tag/v[0-9]+\.[0-9]+\.[0-9]+' |
-  sed -E 's|/coral-xyz/anchor/releases/tag/v||' |
+# This hits the GitHub API to get all tag names from solana-foundation/anchor
+curl -s "https://api.github.com/repos/solana-foundation/anchor/releases" |
+  grep '"tag_name":' |
+  sed -E 's/.*"v?([^"]+)".*/\1/' |
   sort -u
