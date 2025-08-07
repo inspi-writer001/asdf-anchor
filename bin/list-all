@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-
 set -euo pipefail
 
-current_script_path=${BASH_SOURCE[0]}
-plugin_dir=$(dirname "$(dirname "$current_script_path")")
+GH_REPO="https://github.com/solana-foundation/anchor"
+TOOL_NAME="anchor"
 
-# shellcheck source=./lib/utils.bash
-source "${plugin_dir}/lib/utils.bash"
-
-list_all_versions | sort_versions | xargs echo
+# Get list of releases from GitHub
+curl -s "${GH_REPO}/releases" |
+  grep -Eo '/coral-xyz/anchor/releases/tag/v[0-9]+\.[0-9]+\.[0-9]+' |
+  sed -E 's|/coral-xyz/anchor/releases/tag/v||' |
+  sort -u
