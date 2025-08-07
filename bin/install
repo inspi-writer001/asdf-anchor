@@ -5,7 +5,7 @@ current_script_path=${BASH_SOURCE[0]}
 plugin_dir=$(dirname "$(dirname "$current_script_path")")
 source "${plugin_dir}/lib/utils.bash"
 
-# These should be set by asdf
+# Get version and paths from asdf
 install_type="$ASDF_INSTALL_TYPE"
 version="$ASDF_INSTALL_VERSION" 
 install_path="$ASDF_INSTALL_PATH"
@@ -15,24 +15,26 @@ if [ "$install_type" != "version" ]; then
   exit 1
 fi
 
-# The download script already downloaded the file, we just need to install it
-# No need to download again!
+echo "Installing Anchor v${version} to ${install_path}"
 
-echo "Installing Anchor $version to $install_path"
-
+# Create install directory
 mkdir -p "$install_path/bin"
 
-# Find the downloaded binary in ASDF_DOWNLOAD_PATH
-# The download script should have downloaded it there
-downloaded_file="$ASDF_DOWNLOAD_PATH/anchor"
+# Copy the downloaded binary from download step
+downloaded_file="$ASDF_DOWNLOAD_PATH/$TOOL_NAME"
 
 if [ ! -f "$downloaded_file" ]; then
   echo "Downloaded file not found at $downloaded_file"
   exit 1
 fi
 
-# Copy the downloaded binary to install location
-cp "$downloaded_file" "$install_path/bin/anchor"
-chmod +x "$install_path/bin/anchor"
+# Copy to install location
+cp "$downloaded_file" "$install_path/bin/$TOOL_NAME"
+chmod +x "$install_path/bin/$TOOL_NAME"
 
-echo "✅ Anchor v$version installed successfully"
+# Verify installation
+if ! "$install_path/bin/$TOOL_NAME" --version >/dev/null 2>&1; then
+  fail "Installation verification failed"
+fi
+
+echo "✅ Anchor v${version} installed successfully"

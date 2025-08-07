@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GH_REPO="https://github.com/solana-foundation/anchor"
+# FIXED: Use coral-xyz/anchor instead of solana-foundation/anchor
+GH_REPO="https://github.com/coral-xyz/anchor"
 
 latest_version=$(curl -sI "${GH_REPO}/releases/latest" |
   grep -i location |

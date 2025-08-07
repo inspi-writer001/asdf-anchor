@@ -1,44 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# resolve script and plugin paths
 current_script_path=${BASH_SOURCE[0]}
 plugin_dir=$(dirname "$(dirname "$current_script_path")")
 source "${plugin_dir}/lib/utils.bash"
 
-GH_REPO="https://github.com/solana-foundation/anchor"
-TOOL_NAME="anchor"
-
-# determine version: arg → env → latest-stable
+# Get version and paths from asdf
 version="${ASDF_INSTALL_VERSION}"
-
-# required ASDF paths
 download_path="${ASDF_DOWNLOAD_PATH:?Must be set by ASDF}"
 
-# detect platform
-arch="$(uname -m)"
-os="$(uname -s)"
-case "$arch" in
-  x86_64) arch="x86_64" ;;
-  aarch64|arm64) arch="aarch64" ;;
-  *) fail "Unsupported arch: $arch" ;;
-esac
-case "$os" in
-  Linux) os="unknown-linux-gnu" ;;
-  Darwin) os="apple-darwin" ;;
-  MINGW*|MSYS*|CYGWIN*|Windows_NT) os="pc-windows-msvc.exe" ;;
-  *) fail "Unsupported OS: $os" ;;
-esac
+echo "Downloading Anchor v${version}..."
 
-# build URLs and paths
-filename="${TOOL_NAME}-${version}-${arch}-${os}"
-url="${GH_REPO}/releases/download/v${version}/${filename}"
-dest="${download_path}/${TOOL_NAME}"
+# Use the hybrid download function
+download_release "$version" "$download_path/$TOOL_NAME"
 
-echo "Downloading Anchor v${version} from: $url"
-curl -sSL -o "$dest" "$url" || fail "Download failed"
-
-# make executable if not Windows
-[[ "$os" != *.exe ]] && chmod +x "$dest"
-
-echo "Downloaded Anchor v${version} to: $dest"
+echo "Download completed: $download_path/$TOOL_NAME"

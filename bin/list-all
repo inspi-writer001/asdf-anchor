@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# This hits the GitHub API to get all tag names from solana-foundation/anchor
-curl -s "https://api.github.com/repos/solana-foundation/anchor/releases" |
+# FIXED: Use coral-xyz/anchor instead of solana-foundation/anchor
+curl -s "https://api.github.com/repos/coral-xyz/anchor/releases" |
   grep '"tag_name":' |
   sed -E 's/.*"v?([^"]+)".*/\1/' |
   sort -u
