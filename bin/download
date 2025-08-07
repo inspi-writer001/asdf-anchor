@@ -17,10 +17,10 @@ if [ -z "$version" ]; then
 fi
 
 # where to download and where to install
-download_path="${ASDF_DOWNLOAD_PATH:-/tmp}/${TOOL_NAME}-download"
-install_path="${ASDF_INSTALL_PATH:-/tmp}/${TOOL_NAME}-install/$version"
+download_path="${ASDF_DOWNLOAD_PATH:?Must be set by ASDF}"
+install_path="${ASDF_INSTALL_PATH:?Must be set by ASDF}"
 
-mkdir -p "$download_path" "$install_path"
+mkdir -p "$install_path/bin"
 
 # detect platform
 arch="$(uname -m)"
