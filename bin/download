@@ -10,17 +10,10 @@ GH_REPO="https://github.com/solana-foundation/anchor"
 TOOL_NAME="anchor"
 
 # determine version: arg → env → latest-stable
-version="${1:-${ASDF_INSTALL_VERSION:-}}"
-if [ -z "$version" ]; then
-  version="$(bash "${plugin_dir}/bin/latest-stable")"
-  echo "No version specified; falling back to latest stable: $version"
-fi
+version="${ASDF_INSTALL_VERSION}"
 
 # required ASDF paths
 download_path="${ASDF_DOWNLOAD_PATH:?Must be set by ASDF}"
-install_path="${ASDF_INSTALL_PATH:?Must be set by ASDF}"
-
-mkdir -p "$install_path/bin"
 
 # detect platform
 arch="$(uname -m)"
@@ -40,7 +33,7 @@ esac
 # build URLs and paths
 filename="${TOOL_NAME}-${version}-${arch}-${os}"
 url="${GH_REPO}/releases/download/v${version}/${filename}"
-dest="${download_path}/${filename}"
+dest="${download_path}/${TOOL_NAME}"
 
 echo "Downloading Anchor v${version} from: $url"
 curl -sSL -o "$dest" "$url" || fail "Download failed"
@@ -48,7 +41,4 @@ curl -sSL -o "$dest" "$url" || fail "Download failed"
 # make executable if not Windows
 [[ "$os" != *.exe ]] && chmod +x "$dest"
 
-# move into final install location
-mv "$dest" "$install_path/bin/$TOOL_NAME"
-
-echo "Installed Anchor v${version} to: $install_path/bin/$TOOL_NAME"
+echo "Downloaded Anchor v${version} to: $dest"

@@ -29,6 +29,28 @@ sort_versions() {
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
+# Platform Detection Functions (MISSING - ADD THESE)
+# ────────────────────────────────────────────────────────────────────────────────
+get_arch() {
+  local arch="$(uname -m)"
+  case "$arch" in
+    x86_64) echo "x86_64" ;;
+    aarch64|arm64) echo "aarch64" ;;
+    *) fail "Unsupported architecture: $arch" ;;
+  esac
+}
+
+get_platform() {
+  local os="$(uname -s)"
+  case "$os" in
+    Linux) echo "unknown-linux-gnu" ;;
+    Darwin) echo "apple-darwin" ;;
+    MINGW*|MSYS*|CYGWIN*|Windows_NT) echo "pc-windows-msvc.exe" ;;
+    *) fail "Unsupported OS: $os" ;;
+  esac
+}
+
+# ────────────────────────────────────────────────────────────────────────────────
 # 1) List all installable versions
 # ────────────────────────────────────────────────────────────────────────────────
 list_all_versions() {
@@ -71,9 +93,9 @@ download_release() {
 }
 
 # ────────────────────────────────────────────────────────────────────────────────
-# 3) Install a version that’s already been downloaded
+# 3) Install a version that's already been downloaded
 #    Called by bin/install (via install_version)
-#    $1 = install_type (should be “version”)
+#    $1 = install_type (should be "version")
 #    $2 = version
 #    $3 = full install path
 # ────────────────────────────────────────────────────────────────────────────────

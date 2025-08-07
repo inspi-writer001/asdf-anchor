@@ -5,22 +5,34 @@ current_script_path=${BASH_SOURCE[0]}
 plugin_dir=$(dirname "$(dirname "$current_script_path")")
 source "${plugin_dir}/lib/utils.bash"
 
-version="${1:-${ASDF_INSTALL_VERSION:-}}"
-install_path="${2:-${ASDF_INSTALL_PATH:-}}"
+# These should be set by asdf
+install_type="$ASDF_INSTALL_TYPE"
+version="$ASDF_INSTALL_VERSION" 
+install_path="$ASDF_INSTALL_PATH"
 
-if [ -z "$version" ] || [ -z "$install_path" ]; then
-  echo "Usage: $0 <version> <install-path>"
+if [ "$install_type" != "version" ]; then
+  echo "asdf-anchor only supports installing specific versions"
   exit 1
 fi
 
-platform="$(get_platform)" # e.g. unknown-linux-gnu
-arch="$(get_arch)"         # e.g. x86_64
-filename="anchor-${version}-${arch}-${platform}"
-url="https://github.com/solana-foundation/anchor/releases/download/v${version}/${filename}"
+# The download script already downloaded the file, we just need to install it
+# No need to download again!
 
-echo "Downloading Anchor $version from:"
-echo "  $url"
+echo "Installing Anchor $version to $install_path"
 
 mkdir -p "$install_path/bin"
-curl -sSL "$url" -o "$install_path/bin/anchor"
+
+# Find the downloaded binary in ASDF_DOWNLOAD_PATH
+# The download script should have downloaded it there
+downloaded_file="$ASDF_DOWNLOAD_PATH/anchor"
+
+if [ ! -f "$downloaded_file" ]; then
+  echo "Downloaded file not found at $downloaded_file"
+  exit 1
+fi
+
+# Copy the downloaded binary to install location
+cp "$downloaded_file" "$install_path/bin/anchor"
 chmod +x "$install_path/bin/anchor"
+
+echo "✅ Anchor v$version installed successfully"
